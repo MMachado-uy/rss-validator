@@ -1,0 +1,17 @@
+.Articulo {
+    line-height: 1.5;
+
+    .artNum {
+        font-weight: bold;
+        padding: 0 16px;
+    }
+
+    .resaltado {
+        font-weight: bold;
+        padding: 0 8px;
+    }
+
+    .toggle {
+        cursor: pointer;
+    }
+}

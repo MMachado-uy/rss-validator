@@ -1,0 +1,16 @@
+.Buscador {
+    .navegar {
+        margin-top: 16px;
+        user-select: none;
+
+        .anterior,
+        .siguiente {
+            font-weight: bold;
+            cursor: pointer;
+        }
+    
+        .contador {
+            padding: 0 32px;
+        }
+    }
+}
