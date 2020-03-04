@@ -3,7 +3,7 @@ import Buscador from '../src/components/Buscador';
 
 import './App.scss';
 
-import axios from 'axios';
+import axios from './util/axios-instance';
 
 class App extends React.Component {
     constructor(props) {

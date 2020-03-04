@@ -21,6 +21,7 @@ app.post('/parsefeed', async (req, res) => {
     const { feed } = req.body;
     console.log("parser", parser);
     const parsefeed = await parser(feed);
+    console.log("parsefeed", parsefeed)
 
     console.log(req.body);
 

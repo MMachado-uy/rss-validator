@@ -2,6 +2,11 @@ const Parser = require('rss-parser');
 const rssParser = new Parser();
 const axios = require('axios');
 const fs = require('fs');
+const mi = require('mediainfo-wrapper');
+const _get = require('lodash').get;
+const path = require('path');
+
+const DOWNLOAD_FOLDER = 'downloads';
 
 const feedSummary = {
     image: '',
@@ -23,14 +28,22 @@ const itemSummary = {
 const imageMetadata = {
     url: '',
     alt: '',
-    xSize: '',
-    ySize: '',
+    width: '',
+    height: '',
     resolution: ''
 }
 const videoMetadata = {
     url: '',
-    xSize: '',
-    ySize: ''
+    width: '',
+    height: '',
+    codec: '',
+    fileSize: '',
+    extension: '',
+    duration: '',
+    aspectRatio: '',
+    frameRate: '',
+    rawMetadata: {},
+    readErrors: ''
 }
 
 const parser = async feed => {
@@ -42,7 +55,9 @@ const parser = async feed => {
         summary.image = parsed.image.url;
         summary.title = parsed.title;
 
-        parsed.items.forEach(item => {
+        while (!!parsed.items.length) {
+            console.log('#################################################');
+            const item = parsed.items.pop();
             const currItem = Object.assign({}, itemSummary);
 
             for (const key in item) {
@@ -61,7 +76,7 @@ const parser = async feed => {
                         currItem.hasVideo = true;
                         currItem.video = Object.assign({}, videoMetadata);
                         currItem.video.url = element;
-                        currItem.video = _getVideoData(currItem.video);
+                        currItem.video = await _getVideoData(currItem.video);
                     }
                     if (typeof element === 'string' && element.match(/.(pn|jp(e)?)g/g)) {
                         currItem.hasImage = true;
@@ -72,33 +87,65 @@ const parser = async feed => {
             currItem.rawItem = Object.assign({}, item);
 
             summary.items.push(currItem);
-        });
+        }
 
         return summary;
     } catch (error) {
         console.log("TCL: fetchUrl -> error", error);
+        return error;
     }
 };
 
 const _getVideoData = async videoItem => {
     return new Promise(async (resolve, reject) => {
-        if (!fs.existsSync('./downloads')) fs.mkdirSync('./downloads');
+        if (!fs.existsSync(DOWNLOAD_FOLDER)) fs.mkdirSync(DOWNLOAD_FOLDER);
 
         const { url } = videoItem;
         const filename = url.split('/')[url.split('/').length -1];
 
-        const stream = fs.createWriteStream(filename);
+        const stream = fs.createWriteStream(path.join(DOWNLOAD_FOLDER, filename));
 
-        const response = await axios.get(url, {responseType: 'stream'});
-        response.data.pipe(stream);
+        const video = await axios.get(url, {responseType: 'stream'});
+        video.data.pipe(stream);
 
-        stream.on('finish', () => {
+        stream.on('finish', async () => {
+            const data = await mi(path.join(DOWNLOAD_FOLDER, filename));
             
-            resolve(episodePath)
+            try {
+                for (let i in data) {
+                    const metadata = data[i];
+
+                    videoItem.url = url;
+                    videoItem.width = _get(metadata, 'video.sampled_width', '');
+                    videoItem.height = _get(metadata, 'video.sampled_height', '');
+                    videoItem.codec = _get(metadata, 'video.internet_media_type', '');
+                    videoItem.fileSize = _get(metadata, 'general.stream_size', '');
+                    videoItem.extension = _get(metadata, 'general.file_extension', '');
+                    videoItem.duration = _get(metadata, 'general.duration', '');
+                    videoItem.aspectRatio = _get(metadata, 'video.display_aspect_ratio', '');
+                    videoItem.frameRate = _get(metadata, 'video.frame_rate', '');
+                    videoItem.rawMetadata = metadata;
+                }
+            } catch (e) {
+                videoItem.readErrors = e;
+            } finally {
+                _cleanDownloads(DOWNLOAD_FOLDER);
+                resolve(videoItem);
+            }
         });
-        stream.on('error', reject('downloadEpisode', `Unable to download episode\nEpisode url: ${episodeUrl}`));
+        stream.on('error', (e) => {
+            videoItem.readErrors = e;
+            reject(videoItem);
+        });
     })
-    //return videoItem;
+}
+
+const _cleanDownloads = (folder) => {
+    const files = fs.readdirSync(folder);
+    
+    for (const file of files) {
+        fs.unlinkSync(path.join(folder, file));
+    }
 }
 
 module.exports = {
