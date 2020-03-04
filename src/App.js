@@ -3,7 +3,7 @@ import Buscador from '../src/components/Buscador';
 
 import './App.scss';
 
-import RSSParser from 'rss-parser';
+import axios from 'axios';
 
 class App extends React.Component {
     constructor(props) {
@@ -26,26 +26,13 @@ class App extends React.Component {
 
         try {
 
-            const parser = new RSSParser();
-            feed = await parser.parseURL(checkUrl)
+            feed = await axios.post('http://localhost:8081/parsefeed', {feed: checkUrl});
+            feed = feed.data;
 
             console.dir(feed);
-
-            // const config = {
-            //     headers: {'Access-Control-Allow-Origin': '*'}
-            // };
-            // feed = await axios.get(checkUrl, config);
         } catch (error) {
             console.log("TCL: App -> checkUrl -> error", error)
         }
-
-        // try {
-        //     const parsed = await parseString.parseStringPromise(feed);
-        //     console.log('Done');
-            
-        // } catch (error) {
-        //     console.log("TCL: App -> checkUrl -> error", error);
-        // }
     }
 
     render() {
