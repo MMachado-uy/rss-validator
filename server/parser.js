@@ -87,26 +87,16 @@ const _loopContents = async (item, currItem) => {
     for (const key in item) {
         if (item.hasOwnProperty(key)) {
             const element = item[key];
-            
-            if (key === 'title') {
-                currItem.hasTitle = true;
-                currItem.title = element;
-            }
-            if (key === 'content') {
-                currItem.hasContent = true;
-                currItem.content = element;
-            }
-            if (typeof element === 'string' && element.match(/.mp4/g)) {
-                currItem.hasVideo = true;
-                currItem.video = Object.assign({}, videoMetadata);
-                currItem.video.url = element;
-                currItem.video = await _getVideoData(currItem.video);
-            }
-            if (typeof element === 'string' && element.match(/.(bmp|pn|jp(e)?)g?/gi)) {
-                currItem.hasImage = true;
-                currItem.image = Object.assign({}, imageMetadata);
-                currItem.image.url = element;
-                currItem.image = await _getImageData(currItem.image);
+            console.log("_loopContents -> element", element)
+
+            if (typeof element === 'string') {
+                currItem = await _checkContents(key, element, currItem);
+            } else if (typeof element === 'object') {
+                for (let attr in element) {
+                    console.log("_loopContents -> attr", attr)
+                    console.log("_loopContents -> element[attr]", element[attr])
+                    currItem = await _loopContents(element[attr], currItem);
+                }
             }
         }
     }
@@ -114,7 +104,30 @@ const _loopContents = async (item, currItem) => {
     return currItem;
 }
 
-const _checkContents = async (item)
+const _checkContents = async (key, element, currItem) => {            
+    if (key === 'title') {
+        currItem.hasTitle = true;
+        currItem.title = element;
+    }
+    if (key === 'content') {
+        currItem.hasContent = true;
+        currItem.content = element;
+    }
+    if (element.match(/.mp4/g)) {
+        currItem.hasVideo = true;
+        currItem.video = Object.assign({}, videoMetadata);
+        currItem.video.url = element;
+        currItem.video = await _getVideoData(currItem.video);
+    }
+    if (element.match(/.(bmp|pn|jp(e)?)g?/gi)) {
+        currItem.hasImage = true;
+        currItem.image = Object.assign({}, imageMetadata);
+        currItem.image.url = element;
+        currItem.image = await _getImageData(currItem.image);
+    }
+
+    return currItem;
+}
 
 const _getVideoData = async videoItem => {
     return new Promise(async (resolve, reject) => {
