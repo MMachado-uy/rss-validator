@@ -5,6 +5,8 @@ const cors = require('cors');
 const compression = require('compression');
 const { parser } = require('./parser');
 
+let parsedFeed = {};
+
 const corsOptions = {
     origin: '*',
     optionsSuccessStatus: 200
@@ -19,13 +21,28 @@ app.use(cors(corsOptions));
 
 app.post('/parsefeed', async (req, res) => {
     const { feed } = req.body;
-    console.log("parser", parser);
-    const parsefeed = await parser(feed);
-    console.log("parsefeed", parsefeed)
 
-    console.log(req.body);
+    parsedFeed[feed] = { status: 'pending', feed: {} };
+    parser(feed).then(res => {
+        parsedFeed[feed].feed = res;
+        parsedFeed[feed].status = 'done';
+    })
 
-    res.send(parsefeed);
+    console.log("parsedFeed", parsedFeed)
+    res.send(feed);
+})
+
+app.post('/anynews', async (req, res) => {
+    const { ticket } = req.body;
+    let response = 'pending';
+
+    if (parsedFeed[ticket].status === 'pending') {
+        response = 'pending';
+    } else if (parsedFeed[ticket].status === 'done') {
+        response = parsedFeed[ticket];
+    }
+
+    res.send(response);
 })
 
 const REST_PORT = 8081;// process.env.REST_PORT;

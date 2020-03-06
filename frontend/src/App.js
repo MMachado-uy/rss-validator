@@ -10,7 +10,10 @@ class App extends React.Component {
         super(props);
 
         this.state = {
-            checkUrl: ''
+            checkUrl: '',
+            ticket: '',
+            timer: '',
+            parsedFeed: {}
         }
     }
 
@@ -20,16 +23,52 @@ class App extends React.Component {
         });
     }
 
+    startAsking() {
+        const { ticket } = this.state;
+
+        if (!!ticket) {
+            let timer = setInterval(async () => {
+                console.log('...asking for news');
+
+                const res = await axios.post('http://localhost:8081/anynews', {ticket});
+
+                if (res.data !== 'pending') {
+                    console.log("App -> timer -> res.data", res.data)
+                    console.log('Done!');
+
+                    const { timer } = this.state;
+                    clearInterval(timer);
+
+                    this.setState({
+                        timer: '',
+                        parsedFeed: res.data
+                    })
+                } else {
+                    console.log('maybe next time');
+                }
+            }, 10000);
+
+            this.setState({timer});
+        }
+    }
+
     async checkUrl() {
         const { checkUrl } = this.state;
-        let feed;
+        let ticket;
 
         try {
 
-            feed = await axios.post('http://localhost:8081/parsefeed', {feed: checkUrl});
-            feed = feed.data;
+            ticket = await axios.post('http://localhost:8081/parsefeed', {feed: checkUrl});
+            console.log("App -> checkUrl -> ticket", ticket)
 
-            console.dir(feed);
+            if (ticket.status === 200) {
+                ticket = ticket.data;
+    
+                this.setState({
+                    ticket
+                }, () => this.startAsking())
+                console.dir(ticket);
+            }
         } catch (error) {
             console.log("TCL: App -> checkUrl -> error", error)
         }
